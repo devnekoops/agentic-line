@@ -508,6 +508,8 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
             model_values(values),
             finding_ids=values.get("finding_ids"),
             dedupe_key=values.get("key"),
+            spec_mode=str(values["spec_mode"]) if "spec_mode" in values else None,
+            spec_document=str(values["spec_document"]) if "spec_document" in values else None,
         )
         if request.url.path.startswith("/api/"):
             return JSONResponse({"run_id": run_id}, 202)

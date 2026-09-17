@@ -192,3 +192,33 @@ async def test_revised_spec_updates_workspace_and_existing_pr(environment):
     assert revised in spec_file.read_text()
     assert len(env.server.prs) == 1
     assert "今回の対象仕様 v2" in next(iter(env.server.prs.values()))["body"]
+
+
+async def test_spec_consultation_modes_and_document(environment):
+    env = environment
+    task = await task_ready(env)
+    for mode, document in [("invalid", ""), ("grilling_with_doc", "  ")]:
+        with pytest.raises(IntegrationError):
+            env.workflow.create_run(task["id"], "spec", spec_mode=mode, spec_document=document)
+    run_id = env.workflow.create_run(
+        task["id"], "spec", spec_mode="grilling_with_doc", spec_document="## 制約\nオフライン対応"
+    )
+    run = env.db.one("SELECT * FROM runs WHERE id=?", (run_id,))
+    inputs = json.loads(run["input"])
+    assert inputs["spec_mode"] == "grilling_with_doc"
+    assert "オフライン対応" in inputs["spec_document"]
+    message = env.db.one("SELECT * FROM messages WHERE run_id=?", (run_id,))
+    assert "Issueから仕様案" in message["body"]
+    assert "オフライン対応" in message["body"]
+    assert env.workflow.task(task["id"])["draft_spec"] == task["draft_spec"]
+
+
+def test_spec_consultation_prompt():
+    from kanban.workflow import spec_consultation_prompt
+
+    plain = spec_consultation_prompt({})
+    assert "最大3つ" in plain
+    assert "未決事項" in plain
+    documented = spec_consultation_prompt({"spec_mode": "grilling_with_doc", "spec_document": "資料内容"})
+    assert "資料内容" in documented
+    assert "実行指示ではありません" in documented
