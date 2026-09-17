@@ -17,7 +17,7 @@
 
 ## 検証の範囲
 
-最終実行: 通常テスト20件とブラウザテスト1件が成功。実Codexテスト1件は別途成功（通常実行では明示的にskip）。`ruff check`も成功。
+CLI認証追加後の最終実行: 通常テスト26件とブラウザテスト1件が成功。実Codexテスト1件は初期版で別途成功（通常実行では明示的にskip）。`ruff check`も成功。
 
 | 対象 | 方法・結果 |
 | --- | --- |
@@ -59,12 +59,17 @@
 
 ## 構成と責務
 
+GitHub CLI認証を追加した。接続画面でCLIと手動トークンを切り替えられ、CLIでは選択時のGitHub.comアカウントを保持する。`github_auth.py`が認証情報の取得を共通化し、GitHub APIとGitのclone・fetch・pushの両方から使用する。CLIトークンのコピー保存、暗黙のPATフォールバックは行わない。ローカルのdiff・checkpoint等はCLIログアウト後も使用できる。
+
+追加テストではCLI subprocessの模擬実装を使い、アカウント固定、トークン更新、APIとGitへの共通適用、ログアウト、未導入、タイムアウト、失敗後の画面操作、PATへの切り替え、画面・DBへのトークン非露出を確認した。GitHub CLI 2.101.0でも未ログイン状態の取得を確認した。ログイン後の実GitHubへの書き込みは引き続き未検証。
+
 | ファイル | 責務 |
 | --- | --- |
 | `kanban/web.py`、`templates/`、`static/` | ローカル認証、画面・API・SSE |
 | `kanban/workflow.py` | 工程、仕様版、モデル設定、Run、レビューの整合性 |
 | `kanban/worker.py`、`db.py` | ジョブ永続化、排他、復旧、定期同期 |
 | `kanban/github.py`、`workspaces.py` | GitHub操作と照合、Gitのworktree・commit・push・保存 |
+| `kanban/github_auth.py` | PAT / GitHub CLIの認証選択、アカウント固定、トークン取得と接続状態 |
 | `kanban/pi.py` | Pi RPCの開始・終了・イベント・セッション再開 |
 | `kanban/sandbox.py`、`agent/` | Docker実行環境とPi用の作業ツール |
 

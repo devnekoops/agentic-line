@@ -1,0 +1,33 @@
+<div id="github-auth">
+  <div class="row between">
+    <strong>認証方法</strong>
+    <span class="badge {{ 'green' if github_auth.connected else 'amber' }}">{{ 'CLI 接続済み' if github_auth.method=='cli' and github_auth.connected else 'トークン設定済み' if github_auth.connected else '接続が必要' }}</span>
+  </div>
+  {% if auth_message %}<div class="notice {{ 'error' if auth_error else '' }}">{{ auth_message }}</div>{% endif %}
+  {% if github_auth.method=='cli' %}<p>使用するアカウント: <strong>{{ github_auth.username }}</strong></p>{% endif %}
+  <p>GitHub CLIでログイン済みのアカウントを使えます。トークンをコピーする必要はありません。</p>
+  {% if github_auth.cli_username %}<p class="hint">CLIで選択中: {{ github_auth.cli_username }}</p>{% endif %}
+  {% if github_auth.cli_message %}<div class="notice warning">{{ github_auth.cli_message }}</div>{% endif %}
+  <form hx-post="/ui/settings/github" hx-target="#github-auth" hx-swap="outerHTML" hx-disabled-elt="find button">
+    <input type="hidden" name="method" value="cli">
+    <button class="primary full">GitHub CLIの認証を使う</button>
+  </form>
+  <button class="small full" hx-get="/ui/settings/github" hx-target="#github-auth" hx-swap="outerHTML" hx-disabled-elt="this">認証状態を再確認</button>
+  <details {{ 'open' if not github_auth.cli_username else '' }}>
+    <summary>CLIのログイン手順</summary>
+    <p class="hint"><a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLIをインストール</a>し、このアプリを動かしているPCのターミナルで実行します。</p>
+    <p><code>gh auth login --hostname github.com --web</code></p>
+    <p class="hint">ブラウザでログイン後、「GitHub CLIの認証を使う」を押してください。選択したアカウントを保持するので、変更時もこのボタンで選び直せます。</p>
+  </details>
+  <hr>
+  <details {{ 'open' if github_auth.method=='pat' and github_auth.pat_saved else '' }}>
+    <summary>アクセストークンを使う</summary>
+    <p class="hint">対象リポジトリのIssues・Pull requests・Contentsを読み書きできるトークンを登録します。</p>
+    <form hx-post="/ui/settings/github" hx-target="#github-auth" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <input type="hidden" name="method" value="pat">
+      <label for="github-token">Personal access token / OAuth token</label>
+      <input id="github-token" name="token" type="password" placeholder="{{ '空欄なら保存済みのトークンを使用' if github_auth.pat_saved else 'github_pat_…' }}" {{ 'required' if not github_auth.pat_saved else '' }} autocomplete="off">
+      <button class="full">トークン認証を使う</button>
+    </form>
+  </details>
+</div>

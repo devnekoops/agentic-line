@@ -239,7 +239,7 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
             "settings.html",
             active="settings",
             auth=config.pi_auth_status(),
-            github_connected=bool(config.secret("github")),
+            github_auth=await workflow.github.auth.status(),
             defaults=db.setting("defaults", {}),
             selected=workflow.repo(repository) if repository else None,
             config=config,
@@ -249,11 +249,32 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
     @app.post("/ui/settings/github")
     async def github_settings(request: Request):
         values = await data(request)
-        value = str(values.get("token", "")).strip()
-        if not value:
-            raise IntegrationError("GitHubトークンを入力してください。")
-        config.save_secret("github", value)
-        return notice(request, "GitHubの接続情報を保存しました。リポジトリを登録できます。")
+        method = values.get("method", "pat")
+        error = False
+        try:
+            if method == "cli":
+                username = await workflow.github.auth.use_cli()
+                message = f"GitHub CLIの認証（{username}）を使う設定にしました。"
+            elif method == "pat":
+                workflow.github.auth.use_pat(str(values.get("token", "")))
+                message = "GitHubのトークン認証を設定しました。"
+            else:
+                raise IntegrationError("GitHubの認証方式が不正です。")
+        except IntegrationError as exc:
+            error, message = True, str(exc)
+        response = page(
+            request,
+            "github_auth.html",
+            github_auth=await workflow.github.auth.status(),
+            auth_message=message,
+            auth_error=error,
+        )
+        response.status_code = 400 if error else 200
+        return response
+
+    @app.get("/ui/settings/github", response_class=HTMLResponse)
+    async def github_auth_status(request: Request):
+        return page(request, "github_auth.html", github_auth=await workflow.github.auth.status())
 
     @app.post("/ui/settings/models")
     async def refresh_models(request: Request):

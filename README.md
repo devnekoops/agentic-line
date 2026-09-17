@@ -25,14 +25,24 @@ uv run kanban serve
 
 ## 最初の設定
 
-1. 「接続・モデル」でGitHubのPersonal access tokenを保存します。
+1. 「接続・モデル」で「GitHub CLIの認証を使う」を選びます。アクセストークンの手動登録も選べます。
 2. `owner/repository`を登録します。登録すると既存Issueを取り込みます。
 3. 「利用できるモデルを取得」を押し、仕様相談・実装・レビューの既定モデルを選びます。
 4. リポジトリごとにコンテナイメージとテストコマンドを設定します。
 
-GitHubのfine-grained PATには、対象リポジトリの **Issues / Pull requests / Contents: Read and write** が必要です。Checksの読み取りは任意です。GitHub側のポリシーやブランチ保護により操作が拒否された場合は画面に理由を表示します。[Issue権限](https://docs.github.com/en/rest/issues/issues#create-an-issue)、[PR権限](https://docs.github.com/en/rest/pulls/pulls#create-a-pull-request)、[Contents権限](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents)
+GitHub CLIを使う場合は、アプリを起動するユーザーで[GitHub CLI](https://cli.github.com/)をインストールし、次のコマンドでブラウザ認証します。ログイン後にアプリの「GitHub CLIの認証を使う」を押してください。[CLIのログイン手順](https://cli.github.com/manual/gh_auth_login)
 
-アプリのリポジトリに設定する`git remote`と、アプリが操作するGitHubへの接続設定は別です。アプリ内のGit操作はPATを使い、管理用cloneとタスク用worktreeを作成します。既存の作業ディレクトリを直接編集しません。
+```bash
+gh auth login --hostname github.com --web
+```
+
+選択時のアカウント名だけを保存し、API操作とGitのclone・fetch・pushに使うトークンを実行の都度CLIから取得します。CLIのトークンはアプリへコピー保存しません。CLIで別アカウントへ切り替えてもアプリは選択済みのアカウントを保持します。アプリでも変更する場合は「GitHub CLIの認証を使う」を押し直してください。ログアウト・失効時はエラーとして停止し、保存済みPATへ自動で切り替えません。
+
+CLI方式は`gh auth login`で保存された認証を使います。`GH_TOKEN` / `GITHUB_TOKEN`等の環境変数による上書きは無効にしています。`GH_CONFIG_DIR`は利用できます。接続先はGitHub.comです。未ログインや期限切れは「認証状態を再確認」で確認できます。
+
+手動登録するfine-grained PATには、対象リポジトリの **Issues / Pull requests / Contents: Read and write** が必要です。Checksの読み取りは任意です。GitHub側のポリシーやブランチ保護により操作が拒否された場合は画面に理由を表示します。[Issue権限](https://docs.github.com/en/rest/issues/issues#create-an-issue)、[PR権限](https://docs.github.com/en/rest/pulls/pulls#create-a-pull-request)、[Contents権限](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents)
+
+アプリのリポジトリに設定する`git remote`と、アプリが操作するGitHubへの接続設定は別です。アプリ内のGit操作は選択した認証を使い、管理用cloneとタスク用worktreeを作成します。既存の作業ディレクトリを直接編集しません。
 
 ## 開発の流れ
 
@@ -88,6 +98,7 @@ Codexは`openai-codex`のOAuth認証を要求し、制限・認証エラー時�
 | `KANBAN_DATA_DIR` | アプリの保存先 |
 | `KANBAN_PORT` | ポート（既定8765） |
 | `KANBAN_PI_BIN` | Pi実行ファイル（既定`pi`） |
+| `KANBAN_GH_BIN` | GitHub CLI実行ファイル（既定`gh`） |
 | `KANBAN_PI_AGENT_DIR` | Piの設定・認証ディレクトリ（既定`~/.pi/agent`） |
 | `KANBAN_SANDBOX_IMAGE` | 新規登録リポジトリの既定イメージ |
 

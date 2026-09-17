@@ -16,7 +16,7 @@ from kanban.worker import Worker
 pytestmark = pytest.mark.skipif(os.getenv("KANBAN_BROWSER_TEST") != "1", reason="opt-in browser test")
 
 
-async def test_browser_issue_spec_implementation_review(environment):
+async def test_browser_issue_spec_implementation_review(environment, fake_gh):
     env = environment
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -49,6 +49,27 @@ async def test_browser_issue_spec_implementation_review(environment):
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(f"http://127.0.0.1:{port}/?token={env.config.local_token()}")
             await page.get_by_role("link", name="接続を設定する →").click()
+            await page.get_by_role("button", name="GitHub CLIの認証を使う").click()
+            await expect(page.get_by_text("CLI 接続済み", exact=True)).to_be_visible()
+            assert env.db.setting("github_auth")["username"] == "alice"
+            fake_gh.state["fail"] = True
+            fake_gh.save()
+            await page.get_by_role("button", name="認証状態を再確認").click()
+            await expect(page.locator("#github-auth .badge")).to_have_text("接続が必要")
+            await page.get_by_role("button", name="GitHub CLIの認証を使う").click()
+            await expect(page.locator("#github-auth .notice.error")).to_be_visible()
+            fake_gh.state["fail"] = False
+            fake_gh.save()
+            await page.get_by_text("アクセストークンを使う", exact=True).click()
+            await page.locator("#github-token").fill("browser-test-pat")
+            await page.get_by_role("button", name="トークン認証を使う").click()
+            await expect(page.locator("#github-auth .badge")).to_have_text("トークン設定済み")
+            await page.get_by_role("button", name="GitHub CLIの認証を使う").click()
+            await expect(page.get_by_text("CLI 接続済み", exact=True)).to_be_visible()
+            assert "fake-cli-token-one" not in await page.content()
+            folder = Path("test-results")
+            folder.mkdir(exist_ok=True)
+            await page.screenshot(path=str(folder / "github-cli-auth.png"), full_page=True)
             await page.locator("#repository-name").fill("test/repo")
             await page.get_by_role("button", name="追加・同期").click()
             await expect(page.get_by_role("button", name="＋ Issueを起票")).to_be_visible(timeout=15000)

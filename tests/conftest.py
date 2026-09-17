@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -217,7 +218,10 @@ class FakePi:
 
 
 @pytest.fixture
-def environment(tmp_path):
+def environment(tmp_path, monkeypatch):
+    gh_config = tmp_path / "gh-config"
+    gh_config.mkdir()
+    monkeypatch.setenv("GH_CONFIG_DIR", str(gh_config))
     origin = tmp_path / "remote.git"
     subprocess.run(
         ["git", "init", "--bare", "--initial-branch=main", str(origin)], check=True, capture_output=True
@@ -266,3 +270,50 @@ async def task_ready(env):
         {"task_id": task["id"], "body": task["draft_spec"], "expected_body": task["issue_body"]},
     )
     return env.workflow.task(task["id"])
+
+
+@pytest.fixture
+def fake_gh(tmp_path, monkeypatch):
+    """A subprocess-level CLI double; no real accounts or network are accessed."""
+    bin_dir = tmp_path / "cli-bin"
+    bin_dir.mkdir()
+    executable = bin_dir / "gh"
+    state_path = bin_dir / "state.json"
+    calls_path = bin_dir / "calls.jsonl"
+    state = {
+        "accounts": [{"login": "alice", "active": True, "state": "success"}],
+        "tokens": {"alice": "fake-cli-token-one", "bob": "fake-cli-token-two"},
+    }
+
+    def save():
+        state_path.write_text(json.dumps(state))
+
+    save()
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        + """
+import json, os, sys, time
+from pathlib import Path
+root = Path(__file__).parent
+state = json.loads((root / 'state.json').read_text())
+args = sys.argv[1:]
+with (root / 'calls.jsonl').open('a') as log:
+    log.write(json.dumps({'args':args, 'pid':os.getpid(), 'ambient_token':os.environ.get('GH_TOKEN')}) + '\\n')
+if state.get('sleep'): time.sleep(30)
+if state.get('fail'):
+    print('fake-cli-token-one', file=sys.stderr)
+    print('fake-cli-token-one')
+    sys.exit(1)
+if args[:2] == ['auth','status']:
+    print(json.dumps({'hosts':{'github.com': state['accounts']}}))
+elif args[:2] == ['auth','token']:
+    username = args[args.index('--user')+1]
+    token = state['tokens'].get(username)
+    if not token: sys.exit(1)
+    print(token)
+else: sys.exit(1)
+"""
+    )
+    executable.chmod(0o700)
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ["PATH"])
+    return SimpleNamespace(state=state, save=save, executable=executable, calls_path=calls_path)
