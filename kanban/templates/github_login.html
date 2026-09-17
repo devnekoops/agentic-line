@@ -1,0 +1,21 @@
+<div id="github-login" {% if github_login.active %}hx-get="/ui/settings/github/login/{{ github_login.id }}" hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML" hx-sync="#github-auth:drop"{% endif %}>
+  {% if github_login.message %}
+  <p role="status" class="notice {{ 'error' if github_login.state in ['error','expired'] else 'success' if github_login.state=='success' else '' }}">{% if github_login.active %}<span class="spinner" aria-hidden="true"></span>{% endif %}{{ github_login.message }}</p>
+  {% endif %}
+  {% if github_login.code %}
+  <label for="github-login-code">認証コード</label>
+  <input id="github-login-code" class="auth-code" value="{{ github_login.code }}" readonly autocomplete="off" spellcheck="false">
+  <p class="hint">GitHubの画面でこのコードを入力し、「GitHub CLI」へのアクセスを許可してください。完了すると、この画面も自動で切り替わります。</p>
+  <a class="button primary full" href="https://github.com/login/device" target="_blank" rel="noopener noreferrer" data-copy-code="{{ github_login.code }}">コードをコピーしてGitHubを開く ↗</a>
+  <p class="hint" data-copy-status role="status">コードの有効期限は約15分です。</p>
+  {% endif %}
+  {% if github_login.active %}
+  <form hx-post="/ui/settings/github/login/{{ github_login.id }}/cancel" hx-target="#github-login" hx-swap="outerHTML" hx-sync="#github-auth:replace" hx-disabled-elt="find button">
+    <button class="small full">接続をキャンセル</button>
+  </form>
+  {% else %}
+  <form hx-post="/ui/settings/github/login" hx-target="#github-login" hx-swap="outerHTML" hx-sync="#github-auth:replace" hx-disabled-elt="find button">
+    <button class="primary full">{{ 'もう一度GitHubに接続' if github_login.state in ['error','expired','cancelled'] else 'GitHubに接続' }}</button>
+  </form>
+  {% endif %}
+</div>

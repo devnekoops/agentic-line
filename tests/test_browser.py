@@ -49,6 +49,47 @@ async def test_browser_issue_spec_implementation_review(environment, fake_gh):
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(f"http://127.0.0.1:{port}/?token={env.config.local_token()}")
             await page.get_by_role("link", name="接続を設定する →").click()
+            await page.get_by_role("button", name="GitHubに接続", exact=True).click()
+            await expect(page.locator("#github-login-code")).to_have_value("ABCD-EFGH")
+            await page.reload()
+            await expect(page.locator("#github-login-code")).to_have_value("ABCD-EFGH")
+            folder = Path("test-results")
+            folder.mkdir(exist_ok=True)
+            await page.screenshot(path=str(folder / "github-browser-login.png"), full_page=True)
+            # The popup is a local stand-in: no real GitHub login or credentials are used.
+            await page.context.route(
+                "https://github.com/login/device",
+                lambda route: route.fulfill(
+                    body="<h1>GitHub authorization (test)</h1>", content_type="text/html"
+                ),
+            )
+            await page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+            async with page.expect_popup() as opening:
+                await page.get_by_role("link", name="コードをコピーしてGitHubを開く").click()
+            popup = await opening.value
+            await expect(popup.get_by_role("heading")).to_have_text("GitHub authorization (test)")
+            assert popup.url == "https://github.com/login/device"
+            await popup.close()
+            assert await page.evaluate("navigator.clipboard.readText()") == "ABCD-EFGH"
+            fake_gh.state["login_approved"] = True
+            fake_gh.save()
+            await expect(page.get_by_text("CLI 接続済み", exact=True)).to_be_visible(timeout=10000)
+            await expect(page.locator("#github-login-code")).to_have_count(0)
+            assert env.db.setting("github_auth")["username"] == "alice"
+            # A denied login keeps the previous connection and offers a working retry.
+            fake_gh.state.update(login_approved=False, login_mode="access_denied")
+            fake_gh.save()
+            await page.get_by_role("button", name="GitHubに接続", exact=True).click()
+            await expect(
+                page.get_by_text("GitHubで認証が許可されませんでした。もう一度開始できます。")
+            ).to_be_visible()
+            fake_gh.state["login_mode"] = "success"
+            fake_gh.save()
+            await page.get_by_role("button", name="もう一度GitHubに接続", exact=True).click()
+            await expect(page.locator("#github-login-code")).to_have_value("ABCD-EFGH")
+            await page.get_by_role("button", name="接続をキャンセル", exact=True).click()
+            await expect(page.get_by_text("接続をキャンセルしました。もう一度開始できます。")).to_be_visible()
+            await expect(page.locator("#github-login-code")).to_have_count(0)
             await page.get_by_role("button", name="GitHub CLIの認証を使う").click()
             await expect(page.get_by_text("CLI 接続済み", exact=True)).to_be_visible()
             assert env.db.setting("github_auth")["username"] == "alice"

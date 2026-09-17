@@ -1,4 +1,15 @@
 document.addEventListener('click', event => {
+  const copyCode = event.target.closest('[data-copy-code]');
+  if (copyCode) {
+    const status = document.querySelector('[data-copy-status]');
+    const copied = navigator.clipboard?.writeText(copyCode.dataset.copyCode);
+    if (copied) copied.then(() => {
+      if (status) status.textContent = 'コードをコピーしました。GitHubの画面に貼り付けてください。';
+    }).catch(() => {
+      if (status) status.textContent = 'コピーできませんでした。表示されたコードを手動で入力してください。';
+    });
+    else if (status) status.textContent = '表示されたコードを手動で入力してください。';
+  }
   const open = event.target.closest('[data-open]');
   if (open) document.getElementById(open.dataset.open).showModal();
   if (event.target.closest('[data-close]')) event.target.closest('dialog').close();

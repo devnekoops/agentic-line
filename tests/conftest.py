@@ -286,7 +286,9 @@ def fake_gh(tmp_path, monkeypatch):
     }
 
     def save():
-        state_path.write_text(json.dumps(state))
+        temporary = state_path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(state))
+        temporary.replace(state_path)
 
     save()
     executable.write_text(
@@ -311,6 +313,24 @@ elif args[:2] == ['auth','token']:
     token = state['tokens'].get(username)
     if not token: sys.exit(1)
     print(token)
+elif args[:2] == ['auth','login']:
+    mode = state.get('login_mode', 'success')
+    if mode == 'no-code': time.sleep(30)
+    if mode == 'oversized':
+        print('x' * 100000, flush=True)
+        time.sleep(30)
+    code = state.get('login_code', 'ABCD-EFGH')
+    print('! First copy your one-time code: ' + code, file=sys.stderr, flush=True)
+    print('Open this URL to continue in your web browser: https://github.com/login/device',
+          file=sys.stderr, flush=True)
+    if mode in ('access_denied', 'expired_token', 'failure'):
+        print(mode + ' fake-cli-token-one', file=sys.stderr, flush=True)
+        sys.exit(1)
+    while not state.get('login_approved'):
+        time.sleep(0.02)
+        state = json.loads((root / 'state.json').read_text())
+    print('never display fake-cli-token-one', file=sys.stderr, flush=True)
+    print('✓ Logged in as ' + state.get('login_user', 'alice'), file=sys.stderr, flush=True)
 else: sys.exit(1)
 """
     )

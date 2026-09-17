@@ -23,7 +23,8 @@ class GitHubAuth:
         # Existing installations continue to use their saved token.
         return self.db.setting("github_auth", {"method": "pat"})
 
-    async def _gh(self, *args: str) -> tuple[int, str]:
+    async def cli_process(self, *args: str, capture_stderr: bool = False) -> asyncio.subprocess.Process:
+        """Run gh without ambient credentials or terminal/browser interaction."""
         env = {
             key: value
             for key, value in os.environ.items()
@@ -37,23 +38,27 @@ class GitHubAuth:
                 "GH_DEBUG",
                 "DEBUG",
                 "GH_FORCE_TTY",
+                "CLICOLOR_FORCE",
             }
         }
         env.update(GH_PROMPT_DISABLED="1", GH_NO_UPDATE_NOTIFIER="1", NO_COLOR="1")
         try:
-            process = await asyncio.create_subprocess_exec(
+            return await asyncio.create_subprocess_exec(
                 self.config.gh_bin,
                 *args,
                 env=env,
                 cwd=self.config.data_dir,
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.STDOUT if capture_stderr else asyncio.subprocess.DEVNULL,
             )
         except OSError as exc:
             raise IntegrationError(
                 "GitHub CLI (gh)を起動できません。インストールと実行パスを確認してください。"
             ) from exc
+
+    async def _gh(self, *args: str) -> tuple[int, str]:
+        process = await self.cli_process(*args)
         try:
             output, _ = await asyncio.wait_for(process.communicate(), CLI_TIMEOUT)
         except BaseException as exc:
@@ -109,9 +114,12 @@ class GitHubAuth:
             return self.config.secret("github")
         raise IntegrationError("GitHubの認証方式を接続設定で選び直してください。")
 
-    async def use_cli(self) -> str:
+    async def use_cli(self, username: str | None = None) -> str:
         accounts = await self._accounts()
-        active = next((a for a in accounts if a["active"]), None)
+        active = next(
+            (a for a in accounts if (a["login"] == username if username is not None else a["active"])),
+            None,
+        )
         if not active or active["state"] != "success":
             raise IntegrationError(
                 f"GitHub CLIは未ログイン、または認証が無効です。{LOGIN_COMMAND} を実行してください。"
