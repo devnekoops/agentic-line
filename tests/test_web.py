@@ -54,3 +54,24 @@ async def test_pages_render_and_escape_repo_content(environment):
         )
         assert result.status_code == 409
         assert env.workflow.task(task["id"])["draft_spec"] == "updated"
+
+
+async def test_spec_page_is_conversation_first(environment):
+    env = environment
+    task = await task_ready(env)
+    with TestClient(create_app(env.config, env.workflow)) as client:
+        client.get("/?token=" + env.config.local_token())
+        response = client.get(f"/tasks/{task['id']}?tab=spec")
+        assert response.status_code == 200
+        assert response.text.index("LLMと仕様をつくる") < response.text.index("仕様案の確認・確定")
+        assert 'name="spec_mode"' in response.text
+        assert 'name="spec_document"' in response.text
+        response = client.post(
+            f"/api/tasks/{task['id']}/runs",
+            headers={"X-CSRF-Token": env.config.local_token()},
+            json={"phase": "spec", "spec_mode": "grilling_with_doc", "spec_document": "資料"},
+        )
+        assert response.status_code == 202
+        page = client.get(f"/tasks/{task['id']}?tab=spec")
+        assert 'value="grilling_with_doc" selected' in page.text
+        assert '資料</textarea>' in page.text
