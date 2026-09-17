@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanban — 画面設計</title>
+  <style>
+    :root { --paper:#f5f4ef; --white:#fff; --ink:#292c30; --muted:#757b83; --line:#d7d9dc; --blue:#446582; --blue-light:#edf3f8; --green:#52756a; --green-light:#edf3ef; --amber:#916f36; --amber-light:#f7f1e5; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.65 "Noto Sans JP",sans-serif; }
+    button,input,textarea,select { font:inherit; color:inherit; }
+    button,a { -webkit-tap-highlight-color:transparent; }
+    button { cursor:pointer; }
+    button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline:3px solid #7fa4c7; outline-offset:3px; }
+    button { border:1px solid var(--line); background:var(--white); border-radius:6px; padding:8px 13px; }
+    button:hover { border-color:#8798a7; background:#fafbfc; }
+    a { color:inherit; text-decoration:none; }
+    h1,h2,h3,p { margin:0; }
+    h1 { font-size:25px; letter-spacing:.015em; line-height:1.5; }
+    h2 { font-size:16px; }
+    h3 { font-size:14px; }
+    small,.small { font-size:12px; }
+    .muted { color:var(--muted); }
+    .mono { font-family:ui-monospace,monospace; }
+    .row { display:flex; align-items:center; gap:10px; }
+    .between { justify-content:space-between; }
+    .wrap { flex-wrap:wrap; }
+    .grow { flex:1; }
+    .primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .primary:hover { background:#385873; color:#fff; }
+    .quiet { border-color:transparent; background:transparent; }
+    .full { width:100%; }
+    .badge { display:inline-flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-size:11px; white-space:nowrap; }
+    .badge.blue { background:var(--blue-light); border-color:#d7e2eb; color:var(--blue); }
+    .badge.green { background:var(--green-light); border-color:#d9e7de; color:var(--green); }
+    .badge.amber { background:var(--amber-light); border-color:#e9dfcb; color:var(--amber); }
+    .dot { width:6px; height:6px; display:inline-block; background:currentColor; border-radius:50%; }
+    .mark { display:inline-grid; place-items:center; width:21px; height:21px; border:1px solid var(--blue); border-radius:50%; color:var(--blue); font:11px ui-monospace,monospace; flex-shrink:0; }
+    .eyebrow { font:11px ui-monospace,monospace; letter-spacing:.16em; color:var(--muted); }
+    .prototype { height:62px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); gap:20px; }
+    .prototype strong { font-size:12px; font-weight:500; }
+    .sample-nav { display:flex; gap:6px; }
+    .sample-nav a { font-size:12px; padding:6px 11px; border:1px solid transparent; border-radius:5px; }
+    .sample-nav a.active { border-color:#b9c1c9; background:#fff; }
+    .shell { display:grid; grid-template-columns:185px minmax(0,1fr); min-height:780px; margin:24px 28px 0; border:1px solid #bfc3c8; border-radius:9px; overflow:hidden; background:var(--white); }
+    .sidebar { background:#f8f9fa; border-right:1px solid var(--line); padding:23px 17px; display:flex; flex-direction:column; }
+    .brand { font-size:21px; font-weight:700; letter-spacing:-.7px; margin-bottom:32px; }
+    .brand-symbol { display:inline-flex; gap:3px; vertical-align:middle; margin-right:9px; }
+    .brand-symbol i { display:block; width:5px; height:19px; background:var(--ink); border-radius:1px; }
+    .brand-symbol i:nth-child(2) { height:13px; }
+    .brand-symbol i:nth-child(3) { height:16px; }
+    .repo { font-size:12px; border:1px solid var(--line); background:white; border-radius:5px; padding:10px; margin:8px 0 24px; }
+    .sidebar-link { display:block; padding:9px 11px; border-radius:5px; margin:4px 0; color:#69717a; }
+    .sidebar-link.active { background:#e8edf2; color:var(--blue); font-weight:500; }
+    .side-bottom { margin-top:auto; padding-top:28px; font-size:11px; }
+    .side-bottom p { margin-top:10px; }
+    .app { min-width:0; }
+    .topbar { height:56px; border-bottom:1px solid var(--line); padding:0 26px; display:flex; align-items:center; justify-content:space-between; font-size:12px; }
+    .topbar .crumb { color:var(--muted); }
+    .content { padding:25px 26px 26px; }
+    .intro { margin-bottom:23px; }
+    .intro .eyebrow { margin-bottom:5px; }
+    .intro .sub { color:var(--muted); margin-top:6px; font-size:12px; }
+    .toolbar { margin-bottom:24px; }
+    .search { width:270px; background:#fafbfc; }
+    input,textarea,select { border:1px solid var(--line); background:white; border-radius:5px; padding:9px 11px; width:100%; }
+    textarea { resize:vertical; min-height:78px; }
+    label { display:block; font-size:12px; margin:13px 0 5px; }
+    select { appearance:auto; }
+    .filters button { padding:5px 11px; font-size:12px; }
+    .filters button.selected { background:var(--blue-light); border-color:#c2d2df; color:var(--blue); }
+    .board { display:grid; grid-template-columns:repeat(6,minmax(163px,1fr)); gap:13px; overflow-x:auto; padding-bottom:14px; }
+    .column { min-height:371px; background:#fafafa; border:1px solid #e7e8ea; border-radius:6px; padding:10px; }
+    .column-head { display:flex; gap:8px; align-items:center; margin:3px 0 16px; font-size:12px; font-weight:500; white-space:nowrap; }
+    .count { margin-left:auto; color:#969ca3; font:11px ui-monospace,monospace; }
+    .lane-mark { width:7px; height:7px; border:1px solid #959ba1; border-radius:50%; }
+    .column[data-lane="実装中"] .lane-mark { background:var(--blue); border-color:var(--blue); }
+    .card { display:block; width:100%; text-align:left; background:white; border:1px solid #cfd4d9; border-radius:5px; padding:12px 10px; margin-bottom:10px; }
+    .card.featured { border-color:#6f8aa2; border-left:3px solid var(--blue); }
+    .card-id { font:11px ui-monospace,monospace; color:var(--muted); margin-bottom:9px; }
+    .card-title { font-size:12px; font-weight:500; line-height:1.8; min-height:44px; margin-bottom:12px; }
+    .card-foot { border-top:1px solid #eef0f2; padding-top:9px; margin-top:11px; font-size:10px; color:var(--muted); }
+    .card .badge { font-size:10px; padding:1px 5px; }
+    .card-placeholder { border:1px dashed #d5d9dd; border-radius:5px; height:60px; display:grid; place-items:center; color:#9aa0a7; font-size:11px; }
+    .activity { margin-top:18px; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .activity-head { padding:11px 16px; background:#fafbfc; border-bottom:1px solid var(--line); font-size:12px; }
+    .activity-item { display:flex; align-items:center; gap:18px; padding:15px 16px; font-size:12px; }
+    .progress { height:3px; background:#e7ecf0; margin-top:9px; width:190px; }
+    .progress span { display:block; height:100%; width:62%; background:#7994ab; }
+    .task-title { margin-top:8px; }
+    .task-meta { display:flex; gap:9px; align-items:center; margin-top:9px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
+    .steps { margin-top:19px; display:flex; gap:17px; align-items:center; font-size:11px; color:#9298a0; }
+    .steps .current { color:var(--blue); font-weight:500; }
+    .tabs { display:flex; gap:25px; border-bottom:1px solid var(--line); margin:21px 0; }
+    .tabs a,.tabs button { font-size:12px; padding:0 0 11px; background:none; border:0; border-radius:0; }
+    .tabs .active { color:var(--blue); border-bottom:2px solid var(--blue); }
+    .workspace { display:grid; grid-template-columns:minmax(0,1fr) 306px; gap:23px; }
+    .panel { border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .panel-head { padding:13px 17px; background:#fafbfc; border-bottom:1px solid var(--line); font-size:12px; }
+    .panel-body { padding:17px; }
+    .panel-body p { font-size:12px; margin-bottom:12px; }
+    .panel-body h3 { margin:15px 0 7px; }
+    .panel-body h3:first-child { margin-top:0; }
+    .checkline { display:flex; align-items:flex-start; gap:9px; margin:8px 0; font-size:12px; }
+    .box { width:13px; height:13px; border:1px solid #aeb6bf; flex-shrink:0; margin-top:4px; display:grid; place-items:center; font-size:10px; }
+    .box.checked { color:var(--green); border-color:#a4b9ae; }
+    .note { padding:10px 12px; background:#f7f8fa; border-left:2px solid #a5b5c5; font-size:11px; color:#69737e; }
+    .runtime { background:#fcfcfd; }
+    .runtime .panel-body { padding:16px; }
+    .runtime .panel-head { background:#f0f3f6; }
+    .runtime label:first-child { margin-top:0; }
+    .runtime select { font-size:12px; }
+    .runtime hr { border:0; border-top:1px solid var(--line); margin:17px 0; }
+    .runtime .metric { display:flex; justify-content:space-between; font-size:11px; margin:7px 0; }
+    .runtime .primary { margin-top:12px; }
+    .runtime .hint { font-size:10px; color:var(--muted); margin:9px 0 0; line-height:1.8; }
+    .chat { margin-top:15px; }
+    .chat-line { border-left:2px solid #d2dae2; padding-left:11px; margin:12px 0; font-size:12px; }
+    .chat-line p { margin-top:5px; color:#616b75; }
+    .chat textarea { font-size:12px; min-height:65px; }
+    .chat .row { margin-top:8px; }
+    .file-layout { display:grid; grid-template-columns:170px minmax(0,1fr); }
+    .file-list { background:#fafbfc; border-right:1px solid var(--line); padding:10px 0; font:11px/2.9 ui-monospace,monospace; }
+    .file-list div { padding:0 12px; }
+    .file-list .selected { background:#e9eff4; color:var(--blue); }
+    .diff { padding:12px 0; overflow:auto; font:11px/2.15 ui-monospace,monospace; }
+    .code-line { white-space:pre; padding:0 13px; }
+    .code-line.add { background:#edf4ef; color:#4c7160; }
+    .code-line.del { background:#f8eeee; color:#98605e; }
+    .ln { display:inline-block; width:27px; color:#9aa1a9; user-select:none; }
+    .log { padding:13px 16px; font:11px/2.25 ui-monospace,"Noto Sans JP",sans-serif; }
+    .log time { color:#9aa1a9; margin-right:14px; }
+    .log .running { color:var(--blue); }
+    .review-summary { background:#fbf8f0; border:1px solid #e2d8bf; padding:14px 16px; border-radius:5px; margin-bottom:14px; }
+    .review-summary p { margin-top:5px; font-size:11px; color:#84714f; }
+    .finding { padding:16px; border:1px solid var(--line); border-radius:5px; margin-bottom:13px; }
+    .finding p { font-size:12px; margin:10px 0; }
+    .finding .path { font-size:11px; color:var(--muted); margin-top:7px; }
+    .finding select { width:auto; font-size:11px; padding:4px 8px; }
+    .finding.is-skipped { opacity:.55; }
+    .setting-grid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:22px; }
+    .connection { padding:17px; border-bottom:1px solid var(--line); }
+    .connection:last-child { border-bottom:0; }
+    .connection p { margin:4px 0; font-size:12px; }
+    .connection .mono { font-size:11px; color:var(--muted); }
+    .preset { padding:14px 0; border-bottom:1px solid var(--line); }
+    .preset:last-child { border-bottom:0; }
+    .preset label { margin:0 0 7px; }
+    .annotations { margin:18px 30px 24px; display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+    .annotation { display:flex; gap:10px; font-size:11px; color:#757b82; }
+    .annotation strong { display:block; font-size:12px; font-weight:500; color:#4d5661; margin-bottom:3px; }
+    dialog { border:1px solid #bac3cc; border-radius:9px; padding:0; width:490px; max-width:calc(100vw - 35px); color:var(--ink); }
+    dialog::backdrop { background:#1c263752; }
+    .dialog-head { padding:19px 23px; border-bottom:1px solid var(--line); }
+    .dialog-body { padding:18px 23px 23px; }
+    .dialog-body p { font-size:12px; color:var(--muted); }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+    #toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:#303b46; color:white; border-radius:6px; padding:12px 21px; font-size:12px; z-index:10; box-shadow:0 3px 12px #0002; max-width:90vw; }
+    #toast[hidden] { display:none; }
+    @media(max-width:1150px) { .shell { grid-template-columns:155px minmax(0,1fr); margin:15px; } .content { padding:20px; } .workspace { grid-template-columns:minmax(0,1fr) 270px; gap:15px; } .prototype { height:auto; min-height:62px; padding:12px 18px; flex-wrap:wrap; } .prototype .muted { display:none; } .file-layout { grid-template-columns:1fr; } .file-list { display:none; } }
+    @media(max-width:800px) { .shell { grid-template-columns:1fr; } .sidebar { display:none; } .workspace,.setting-grid { grid-template-columns:1fr; } .annotations { grid-template-columns:1fr; gap:12px; } .toolbar { flex-wrap:wrap; } .intro>.row { align-items:flex-start; flex-wrap:wrap; } .sample-nav { flex-wrap:wrap; } .search { width:200px; } }
+    @media print { .prototype,.annotations { display:none; } .shell { margin:0; border:0; } }
+  </style>
+</head>
+<body>
+  <header class="prototype">
+    <div class="row"><span class="eyebrow">KANBAN / WIREFRAMES 02</span><span class="muted small">画面サンプル・データとモデル名は仮表示・外部通信なし</span></div>
+    <nav class="sample-nav" aria-label="画面サンプル">
+      <a href="#board">01 ボード</a><a href="#spec">02 仕様</a><a href="#implementation">03 実装</a><a href="#review">04 レビュー</a><a href="#settings">05 接続設定</a>
+    </nav>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#board"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>kanban</a>
+      <div class="eyebrow">REPOSITORY</div>
+      <div class="repo">hiroaki / kanban</div>
+      <a class="sidebar-link" data-side="board" href="#board">▦ &nbsp; ボード</a>
+      <a class="sidebar-link" data-side="settings" href="#settings">⚙ &nbsp; 接続・モデル</a>
+      <div class="side-bottom"><span class="badge"><span class="dot"></span> 自分のPC</span><p>GitHub 接続済み<br><span class="muted">最終同期 10:42 · サンプル</span></p></div>
+    </aside>
+    <main class="app" id="app"></main>
+  </div>
+  <footer class="annotations" id="annotations"></footer>
+  <dialog id="model-dialog" aria-labelledby="model-dialog-title">
+    <div class="dialog-head row between"><h2 id="model-dialog-title">別のモデルで続ける</h2><button class="quiet" data-close aria-label="閉じる">×</button></div>
+    <form class="dialog-body" id="model-form">
+      <p>ここまでの変更と残作業を保存し、選んだモデルに引き継ぎます。</p>
+      <div class="note" style="margin-top:15px">引き継ぐ内容：仕様 v2 / 変更ファイル 3件 / テスト結果 / 残作業</div>
+      <div id="switch-fields"></div>
+      <label for="handoff-note">次のモデルへの補足</label><textarea id="handoff-note" placeholder="例：残りの絞り込みテストから進めてほしい"></textarea>
+      <div class="dialog-actions"><button type="button" data-close>戻る</button><button class="primary" type="submit">停止してこのモデルで続行</button></div>
+    </form>
+  </dialog>
+  <dialog id="issue-dialog" aria-labelledby="issue-title">
+    <div class="dialog-head row between"><h2 id="issue-title">Issueを起票する</h2><button class="quiet" data-close aria-label="閉じる">×</button></div>
+    <form class="dialog-body" id="issue-form"><p>画面内だけの入力サンプルです。</p><label for="new-title">タイトル</label><input id="new-title" required placeholder="実現したいこと"><label for="new-body">背景・やりたいこと</label><textarea id="new-body" placeholder="どんな問題を解決したいですか？"></textarea><div class="dialog-actions"><button type="button" data-close>戻る</button><button class="primary">起票イメージを確認</button></div></form>
+  </dialog>
+  <dialog id="history-dialog" aria-labelledby="history-title"><div class="dialog-head row between"><h2 id="history-title">実行履歴</h2><button class="quiet" data-close aria-label="閉じる">×</button></div><div class="dialog-body"><div class="chat-line"><strong>仕様検討 · Codex / 既定モデル</strong><p>仕様 v2 を確定 · 10:25</p></div><div class="chat-line"><strong>実装 · Codex / 既定モデル</strong><p>Draft PR #48 · 3ファイルを変更 · 10:38</p></div><div class="chat-line"><strong>レビュー · Codex / 既定モデル</strong><p>指摘 2件 · 対象 a1b2c3d · 10:45</p></div><p class="muted small">同じIssueの各工程を示すサンプルです。</p></div></dialog>
+  <dialog id="auth-dialog" aria-labelledby="auth-title"><div class="dialog-head row between"><h2 id="auth-title">Codexに接続する</h2><button class="quiet" data-close aria-label="閉じる">×</button></div><div class="dialog-body"><p>ChatGPTのアカウントでログインし、Codexで利用できるサブスク枠を使います。</p><div class="note" style="margin-top:15px">利用できるモデルと上限は、ログイン後のアカウント状態に応じて表示します。</div><button class="primary full" style="margin-top:20px" data-action="codex-auth-demo">ChatGPTでログイン</button><p style="margin-top:14px">ログイン画面のサンプルです。認証情報の入力・保存は行いません。</p></div></dialog>
+  <div id="toast" role="status" hidden></div>
+  <script>
+    const connections = {
+      Codex: { name:'ChatGPTログイン', models:['既定モデル','別の利用可能モデル'], available:true },
+      OpenRouter: { name:'API key接続（追加予定）', models:['モデルIDを選択'], available:false },
+      'llama.cpp': { name:'自分のPC（追加予定）', models:['ロード済みモデル'], available:false }
+    };
+    const state = { provider:'Codex', model:'既定モデル', stopped:false, query:'', filter:'all', messages:[], defaultSaved:false };
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const mark = n => `<span class="mark">${n}</span>`;
+    const badge = (text, color='') => `<span class="badge ${color}">${text}</span>`;
+    const topbar = label => `<div class="topbar"><div><span class="crumb">hiroaki / kanban</span> &nbsp; / &nbsp; ${label}</div><span class="muted">LOCAL WORKSPACE</span></div>`;
+    const providerFields = (prefix, provider='Codex', model='既定モデル') => `<label for="${prefix}-provider">実行先</label><select id="${prefix}-provider" data-provider="${prefix}">${Object.keys(connections).map(p=>`<option value="${p}" ${p===provider?'selected':''} ${connections[p].available?'':'disabled'}>${p}${connections[p].available?'':'（追加予定）'}</option>`).join('')}</select><label for="${prefix}-connection">接続方法</label><select id="${prefix}-connection"><option>${connections[provider].name}</option></select><label for="${prefix}-model">モデル</label><select id="${prefix}-model">${connections[provider].models.map(m=>`<option ${m===model?'selected':''}>${m}</option>`).join('')}</select><p class="hint">ChatGPTのサブスク利用。モデル名はログイン後に取得します（ここでは仮表示）。</p>`;
+    const annotations = {
+      board:[['工程を横に並べる','IssueとPRを一枚のカードで追う。工程と実行状態は別々に表示。'],['今動いている作業が見える','実行中のカードを強調。下段から作業詳細へ移動できる。'],['次の操作へすぐ進む','Issue起票と、選択したカードの詳細を入口にする。']],
+      spec:[['相談した内容を仕様に残す','左に仕様と受け入れ条件。会話の要点を整理して確定する。'],['工程ごとにモデルを選ぶ','右にProvider・接続先・モデル。毎回の実行でも変更できる。'],['確定して実装へ進む','仕様をIssueへ反映したあと、実装開始の画面へ進む。']],
+      implementation:[['成果物を中心に見る','変更したファイルと差分、検証状況をまとめて確認する。'],['実行操作はいつも右側','使用中のモデル、停止、引き継ぎを同じ場所に置く。'],['途中から別モデルへ渡す','切り替え画面で引き継ぐ内容と次のモデルを確認する。']],
+      review:[['指摘から判断する','重大度・根拠・対象をまとめ、対応するかを選べる。'],['レビュー用のモデルを選ぶ','まずCodexで実行。実装とは独立したセッションで確認する。'],['修正と再レビューをつなぐ','採用した指摘を実装へ戻す。対象commitも確認できる。']],
+      settings:[['Codexのサブスクから始める','ChatGPTログインを入口にし、OpenRouterとllama.cppは追加予定に。'],['工程別の既定値を持つ','最初は各工程でCodexを使用。モデルと指示を分けて設定できる。'],['実行中の設定は固定する','既定値の保存は次の実行から反映。途中変更は引き継ぎ操作で。']]
+    };
+    function board() {
+      const cards = [
+        [{n:51,title:'完了したタスクをアーカイブする',tag:'未着手',meta:'更新 30分前'},{n:50,title:'キーボードでカード間を移動する',tag:'未着手',meta:'更新 1時間前'}],
+        [{n:46,title:'Issueのテンプレートを選べるようにする',tag:'入力待ち',color:'amber',meta:'既定モデル · Codex'}],
+        [{n:44,title:'ボードの並び順を保存する',tag:'仕様確定 v1',meta:'受け入れ条件 3件'}],
+        [{n:42,title:'Issueをラベルで絞り込めるようにする',tag:state.stopped?'停止中':'● 実行中',color:'blue',meta:state.model+' · '+state.provider,pr:'Draft PR #48',featured:true}],
+        [{n:39,title:'Providerの接続確認を追加する',tag:'指摘 2件',color:'amber',meta:'既定モデル · Codex',pr:'Draft PR #45'}],
+        [{n:35,title:'GitHubのIssueを取り込む',tag:'マージ済み',color:'green',meta:'完了 昨日',pr:'PR #41'}]
+      ];
+      const lanes=['バックログ','仕様検討','実装待ち','実装中','レビュー','完了'];
+      return topbar('ボード')+`<div class="content"><section class="intro"><div class="eyebrow">PROJECT BOARD</div><div class="row between"><div><h1>開発ボード ${mark(1)}</h1><p class="sub">仕様からレビューまで、Issueごとに進める。</p></div><div class="row">${mark(3)}<button data-action="sync">↻ &nbsp; 同期</button><button class="primary" data-action="new-issue">＋ Issueを起票</button></div></div></section><div class="toolbar row between"><input class="search" id="search" aria-label="Issueを検索" placeholder="⌕  Issueを検索…" value="${escapeHTML(state.query)}"><div class="filters row"><button class="${state.filter==='all'?'selected':''}" data-filter="all">すべて</button><button class="${state.filter==='running'?'selected':''}" data-filter="running">実行中</button><button class="${state.filter==='attention'?'selected':''}" data-filter="attention">確認が必要</button></div></div><div class="board">${lanes.map((lane,i)=>`<section class="column" data-lane="${lane}"><div class="column-head"><span class="lane-mark"></span>${lane}<span class="count">${cards[i].length}</span></div>${cards[i].map(c=>`<${c.featured?'button':'article'} class="card ${c.featured?'featured':''}" data-card data-search="${c.n} ${c.title}" data-kind="${c.featured?'running':c.color==='amber'?'attention':'other'}" ${c.featured?'data-action="open-task"':''}><div class="card-id">#${c.n}${c.featured?' &nbsp; ↗':''}</div><div class="card-title">${c.title}</div>${badge(c.tag,c.color)}${c.pr?`<div class="small muted" style="font-size:10px;margin-top:9px">↳ ${c.pr}</div>`:''}<div class="card-foot">${c.meta}</div></${c.featured?'button':'article'}>`).join('')}${i===2?'<div class="card-placeholder">次の実装を待っています</div>':''}</section>`).join('')}</div><section class="activity"><div class="activity-head row between"><span class="row">${mark(2)} 実行中の作業</span><span class="muted small">並列数 1 / 1 · サンプル</span></div><div class="activity-item"><span class="badge blue">${state.stopped?'停止中':'● 実装中'}</span><div class="grow"><strong>#42 ラベルで絞り込む</strong><div class="small muted">絞り込み条件のテストを確認しています</div></div><div><span class="small">変更 3ファイル · テスト 12 / 14</span><div class="progress"><span></span></div></div><button data-action="open-task">作業を開く →</button></div></section></div>`;
+    }
+    function taskHeader(view) {
+      const stage={spec:'仕様検討',implementation:'実装中',review:'レビュー'}[view];
+      return topbar('Issue #42')+`<div class="content"><div class="eyebrow">ISSUE #42 <span style="letter-spacing:0;margin-left:12px">同じIssueの各工程を表示</span></div><h1 class="task-title">Issueをラベルで絞り込めるようにする</h1><div class="task-meta">${badge(stage,'blue')}<span>hiroaki / kanban</span><span>·</span><button class="quiet small" data-action="github-issue" style="padding:0">Issue #42 ↗</button>${view!=='spec'?'<span>·</span><span>↳ Draft PR #48</span>':''}</div><div class="steps"><span>バックログ</span><span>→</span><span class="${view==='spec'?'current':''}">仕様検討</span><span>→</span><span>実装待ち</span><span>→</span><span class="${view==='implementation'?'current':''}">実装中</span><span>→</span><span class="${view==='review'?'current':''}">レビュー</span><span>→</span><span>完了</span></div><nav class="tabs" aria-label="タスクの内容"><a href="#spec" class="${view==='spec'?'active':''}">仕様・相談</a><a href="#implementation" class="${view==='implementation'?'active':''}">実装・差分 <span class="muted">3</span></a><a href="#review" class="${view==='review'?'active':''}">レビュー <span class="muted">2</span></a><button data-action="history">実行履歴</button></nav>`;
+    }
+    function spec() {
+      return taskHeader('spec')+`<div class="workspace"><section><div class="panel"><div class="panel-head row between"><span class="row">${mark(1)} 仕様案</span>${badge('未確定')}</div><div class="panel-body"><h3>実現したいこと</h3><p>ラベルを選ぶと、該当するIssueだけをボードに表示する。選択中の条件が分かり、すぐに解除できる。</p><h3>受け入れ条件</h3><div class="checkline"><span class="box"></span><span><span class="muted">AC-1</span>　ラベルを複数選択して絞り込める</span></div><div class="checkline"><span class="box"></span><span><span class="muted">AC-2</span>　該当Issueがない場合に空状態を表示する</span></div><div class="checkline"><span class="box"></span><span><span class="muted">AC-3</span>　条件を解除するとすべてのIssueに戻る</span></div><h3>決めたこと</h3><p>複数ラベルの条件はOR。ラベル候補はGitHubの登録内容を使う。</p><div class="note">対象外：ラベルの作成・削除、他リポジトリをまたぐ検索</div></div></div><div class="chat"><div class="row between"><h3>仕様を相談する</h3><span class="small muted">Codex · 既定モデル</span></div><div class="chat-line"><strong>あなた</strong><p>複数選択は、いずれかのラベルに一致すれば表示したい。</p></div><div class="chat-line"><strong>既定モデル</strong><p>OR条件で整理しました。0件時の表示と、解除操作も受け入れ条件に含めています。</p></div><div id="extra-messages">${state.messages.map(m=>`<div class="chat-line"><strong>あなた</strong><p>${escapeHTML(m)}</p></div>`).join('')}</div><form id="chat-form"><textarea id="chat-input" aria-label="仕様への追加指示" placeholder="追加したい条件や、相談したいこと…" required></textarea><div class="row between"><span class="muted small">仕様は確定前に編集できます</span><button type="submit">送信 ↑</button></div></form></div></section><aside><div class="panel runtime"><div class="panel-head row">${mark(2)} 仕様を考えるモデル</div><div class="panel-body">${providerFields('spec','Codex','既定モデル')}<p class="hint">この工程の設定。実装とレビューでは別のモデルを選べます。</p><hr><label for="spec-instruction">今回の指示</label><textarea id="spec-instruction" style="font-size:12px">受け入れ条件を具体的にし、未決事項を整理する。</textarea><button class="full" data-action="spec-draft" style="margin-top:11px">このモデルで仕様案を整理</button><hr><div class="metric"><span class="muted">反映先</span><span>GitHub Issue #42</span></div><button class="primary full" data-action="confirm-spec">仕様を確定して実装へ →</button><p class="hint">${mark(3)} 確定した仕様をIssueへ反映します。</p></div></div></aside></div></div>`;
+    }
+    function implementation() {
+      return taskHeader('implementation')+`<div class="workspace"><section><div class="panel"><div class="panel-head row between"><span class="row">${mark(1)} 変更したファイル</span><span class="small muted">3 files &nbsp; +86 −12</span></div><div class="file-layout"><div class="file-list"><div class="selected">M LabelFilter.tsx</div><div>M Board.tsx</div><div>A filter.test.ts</div></div><div class="diff"><div class="code-line muted">src/components/LabelFilter.tsx</div><div class="code-line"><span class="ln">18</span>const visible = issues.filter(issue =&gt; {</div><div class="code-line del"><span class="ln">19</span>− return issue.labels.includes(label);</div><div class="code-line add"><span class="ln">19</span>+ if (selectedLabels.length === 0) {</div><div class="code-line add"><span class="ln">20</span>+   return true;</div><div class="code-line add"><span class="ln">21</span>+ }</div><div class="code-line add"><span class="ln">22</span>+ return selectedLabels.some(label =&gt;</div><div class="code-line add"><span class="ln">23</span>+   issue.labels.includes(label)</div><div class="code-line add"><span class="ln">24</span>+ );</div><div class="code-line"><span class="ln">25</span>});</div></div></div></div><div class="panel" style="margin-top:17px"><div class="panel-head row between"><span>実行ログ</span>${badge(state.stopped?'停止中':'● テスト中','blue')}</div><div class="log"><div><time>10:38:12</time>仕様 v2 と関連ファイルを確認</div><div><time>10:38:24</time>Draft PR #48 を作成</div><div><time>10:40:05</time>ラベル選択とOR条件を実装</div><div><time>10:41:32</time>12件のテストに成功</div><div class="running"><time>10:42:08</time>${state.stopped?'作業を停止。変更を保存済み。':'◌ 0件時と条件解除のテストを確認中…'}</div></div></div><div class="note" style="margin-top:14px">仕様 v2 · branch: issue/42-label-filter<br>テスト結果は実行ログに記録し、レビューへ引き継ぐ。</div></section><aside><div class="panel runtime"><div class="panel-head row">${mark(2)} 実装の実行</div><div class="panel-body"><div class="row between"><strong style="font-size:13px">${state.provider} / ${state.model}</strong>${badge(state.stopped?'停止中':'実行中','blue')}</div><div class="small muted" style="margin-top:6px">接続：${connections[state.provider].name}</div><hr><div class="metric"><span class="muted">経過時間</span><span>03:56</span></div><div class="metric"><span class="muted">変更ファイル</span><span>3件</span></div><div class="metric"><span class="muted">テスト</span><span>12 / 14</span></div><div class="metric"><span class="muted">仕様</span><span>v2</span></div><hr><button class="full" data-action="stop">${state.stopped?'同じモデルで再開':'一時停止'}</button><button class="full" data-action="switch" style="margin-top:9px">別のモデルで続ける ${mark(3)}</button><p class="hint">変更、テスト結果、残作業を保存してから引き継ぎます。</p><hr><div class="small muted">次の工程</div><button class="primary full" data-action="review">レビューへ進む →</button><p class="hint">差分と検証結果を確認して、レビュー用のモデルを選びます。</p></div></div><div class="small muted" style="margin-top:14px">この画面は実行途中のサンプルです。<br>工程ボタンは次の画面イメージへ移動します。</div></aside></div></div>`;
+    }
+    function review() {
+      return taskHeader('review')+`<div class="workspace"><section><div class="review-summary"><div class="row between"><strong class="row">${mark(1)} レビュー結果：修正候補が2件</strong>${badge('最新の差分','green')}</div><p>Codex / 既定モデル · 対象 commit a1b2c3d · 仕様 v2</p></div><article class="finding"><div class="row between"><div class="row">${badge('中','amber')}<h3>絞り込みが0件のとき、画面が空になる</h3></div><select class="disposition" aria-label="指摘1の対応"><option>対応する</option><option>採用しない</option><option>保留</option></select></div><div class="path mono">src/components/Board.tsx : 84</div><p>存在しない組み合わせを選ぶとカードが消え、読み込み中なのか0件なのか判断できません。</p><div class="note">AC-2に対応する空状態と、「条件を解除」の導線を追加する。</div></article><article class="finding"><div class="row between"><div class="row">${badge('低')}<h3>条件解除のテストが不足している</h3></div><select class="disposition" aria-label="指摘2の対応"><option>対応する</option><option>採用しない</option><option>保留</option></select></div><div class="path mono">src/components/filter.test.ts : 37</div><p>ラベル選択後にすべて解除した場合、全件表示に戻ることを確認できていません。</p></article><div class="panel"><div class="panel-head">受け入れ条件の確認</div><div class="panel-body"><div class="checkline"><span class="box checked">✓</span><span>AC-1　複数ラベルのOR条件</span></div><div class="checkline"><span class="box"></span><span>AC-2　0件時の表示 <span class="muted">— 修正が必要</span></span></div><div class="checkline"><span class="box"></span><span>AC-3　条件解除 <span class="muted">— 検証を追加</span></span></div></div></div></section><aside><div class="panel runtime"><div class="panel-head row">${mark(2)} レビューするモデル</div><div class="panel-body">${providerFields('review','Codex','既定モデル')}<button class="full" data-action="rerun-review" style="margin-top:13px">このモデルで再レビュー</button><hr><div class="metric"><span class="muted">対応する指摘</span><span id="finding-count">2件</span></div><label for="fix-model">修正するモデル</label><select id="fix-model"><option>Codex / 既定モデル</option></select><button class="primary full" data-action="fix">選んだ指摘を修正する ${mark(3)}</button><button class="full" data-action="publish-review" style="margin-top:9px">レビューをGitHubに投稿</button><p class="hint">投稿内容を確認して、LLMレビューとして共有します。</p><hr><button class="quiet full" data-action="ready">人の確認・Draft解除へ →</button><p class="hint">追加のcommitが入ると再レビューが必要です。マージはGitHubで行います。</p></div></div></aside></div></div>`;
+    }
+    function settings() {
+      const presets = [['spec','仕様を考える'],['implementation','実装する'],['review','レビューする']].map(([id,label])=>`<div class="preset"><label for="preset-${id}">${label}</label><select id="preset-${id}"><option>Codex / 既定モデル</option><option>Codex / 別の利用可能モデル</option></select></div>`).join('');
+      return topbar('接続・モデル設定')+`<div class="content"><section class="intro"><div class="eyebrow">CONNECTIONS & MODELS</div><div class="row between"><div><h1>接続とモデル</h1><p class="sub">まずはCodexで、仕様から実装・レビューまで。</p></div>${badge('Codexを先行対応','blue')}</div></section><div class="setting-grid"><section><div class="panel"><div class="panel-head row">${mark(1)} 利用する接続先</div><div class="connection"><div class="row between"><strong>Codex</strong>${badge('● ログイン済み','green')}</div><p>ChatGPTログイン · サブスク利用</p><p class="muted small">アカウントで利用できるモデルを使います。</p><div class="row between" style="margin-top:12px"><span class="muted small">接続状態はサンプル表示</span><button class="small" data-action="codex-login">ログイン設定</button></div></div><div class="connection"><div class="row between"><strong>OpenRouter</strong>${badge('追加予定')}</div><p>API keyで接続</p><p class="muted small">モデルを選んで利用するHTTP接続。</p><p class="mono">openrouter.ai/api/v1</p></div><div class="connection"><div class="row between"><strong>llama.cpp · 自分のPC</strong>${badge('追加予定')}</div><p>起動済みのllama-serverに接続</p><p class="mono">http://127.0.0.1:8080/v1</p><p class="muted small">モデルはローカルサーバー側でロードします。</p></div></div><div class="note" style="margin-top:16px">CodexはChatGPTログインを使用。<br>OpenRouterのAPI利用は別の接続・利用枠として扱います。</div></section><section><div class="panel"><div class="panel-head row">${mark(2)} このリポジトリの既定モデル</div><div class="panel-body">${presets}<div class="note" style="margin-top:17px">${mark(3)} 各工程は独立した指示とセッションで実行します。既定値は次の実行から反映します。</div><button class="primary full" style="margin-top:17px" data-action="save-settings">既定値を保存</button></div></div><p class="small muted" style="margin-top:16px">モデル名は仮表示です。<br>実際にはログイン先で利用できる一覧から選択します。</p></section></div></div>`;
+    }
+    function toast(message) { const node=document.querySelector('#toast'); node.textContent=message; node.hidden=false; clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>node.hidden=true,4000); }
+    function view() { const page=location.hash.slice(1); if(page==='switch')return 'implementation';return ['board','spec','implementation','review','settings'].includes(page)?page:'board'; }
+    function render() { const page=view(); document.querySelector('#app').innerHTML=({board,spec,implementation,review,settings})[page](); document.querySelectorAll('.sample-nav a').forEach(a=>{a.classList.toggle('active',a.hash==='#'+page); if(a.hash==='#'+page)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}); document.querySelectorAll('[data-side]').forEach(a=>a.classList.toggle('active',a.dataset.side===(page==='settings'?'settings':'board'))); document.querySelector('#annotations').innerHTML=annotations[page].map(([title,body],i)=>`<div class="annotation">${mark(i+1)}<div><strong>${title}</strong>${body}</div></div>`).join(''); if(page==='board')filterCards(); }
+    function filterCards() { document.querySelectorAll('[data-card]').forEach(c=>c.hidden=!(c.dataset.search.toLowerCase().includes(state.query.toLowerCase())&&(state.filter==='all'||c.dataset.kind===state.filter))); document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('selected',b.dataset.filter===state.filter)); }
+    document.addEventListener('input',e=>{if(e.target.id==='search'){state.query=e.target.value;filterCards();}});
+    document.addEventListener('change',e=>{const prefix=e.target.dataset.provider;if(prefix){const conn=connections[e.target.value];document.getElementById(prefix+'-connection').innerHTML=`<option>${conn.name}</option>`;document.getElementById(prefix+'-model').innerHTML=conn.models.map(m=>`<option>${m}</option>`).join('');}if(e.target.classList.contains('disposition')){e.target.closest('.finding').classList.toggle('is-skipped',e.target.value!=='対応する');const count=[...document.querySelectorAll('.disposition')].filter(s=>s.value==='対応する').length;document.querySelector('#finding-count').textContent=count+'件';}});
+    document.addEventListener('click',e=>{const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;filterCards();return;}if(e.target.closest('[data-close]')){e.target.closest('dialog').close();return;}const action=e.target.closest('[data-action]')?.dataset.action;if(!action)return;switch(action){
+      case 'open-task':location.hash='implementation';break;
+      case 'sync':toast('同期操作のサンプルです。GitHubへの通信は行いません。');break;
+      case 'new-issue':document.querySelector('#issue-dialog').showModal();break;
+      case 'github-issue':toast('実装時は対応するGitHub Issueを開きます。');break;
+      case 'history':document.querySelector('#history-dialog').showModal();break;
+      case 'confirm-spec':location.hash='implementation';toast('画面サンプル：仕様を確定し、Draft PRで実装する画面へ。');break;
+      case 'spec-draft':toast('選択モデルで仕様案を整理する操作です。API呼び出しは行いません。');break;
+      case 'stop':state.stopped=!state.stopped;render();toast(state.stopped?'サンプル：変更を保存して一時停止しました。':'サンプル：同じモデルで再開しました。');break;
+      case 'switch':document.querySelector('#switch-fields').innerHTML=providerFields('switch',state.provider,state.model);document.querySelector('#model-dialog').showModal();break;
+      case 'review':location.hash='review';break;
+      case 'rerun-review':toast('選択したモデルで、現在の差分を再レビューする操作です。');break;
+      case 'fix':{const n=[...document.querySelectorAll('.disposition')].filter(s=>s.value==='対応する').length;if(!n){toast('「対応する」指摘を選んでください。');break;}const [provider,model]=document.querySelector('#fix-model').value.split(' / ');state.provider=provider;state.model=model;state.stopped=false;location.hash='implementation';toast(`サンプル：${n}件の指摘を実装へ引き継ぎました。`);break;}
+      case 'publish-review':toast('実装時は投稿内容を確認してGitHubへ共有します。ここでは投稿しません。');break;
+      case 'ready':toast('実装時は内容と検証結果を確認してDraftを解除します。');break;
+      case 'codex-login':document.querySelector('#auth-dialog').showModal();break;
+      case 'codex-auth-demo':toast('実装時はChatGPTの公式ログイン画面へ進みます。ここでは認証しません。');break;
+      case 'connection-check':toast('接続確認のサンプルです。APIへの通信は行いません。');break;
+      case 'add-connection':toast('接続先の追加ではProvider・URL・API key・モデルIDを登録します。');break;
+      case 'save-settings':toast('保存操作のサンプルです。変更はこの画面内だけで確認できます。');break;
+    }});
+    document.querySelector('#model-form').addEventListener('submit',e=>{e.preventDefault();state.provider=document.querySelector('#switch-provider').value;state.model=document.querySelector('#switch-model').value;state.stopped=false;document.querySelector('#model-dialog').close();render();toast('サンプル：'+state.provider+' / '+state.model+' に引き継ぎました。');});
+    document.querySelector('#issue-form').addEventListener('submit',e=>{e.preventDefault();document.querySelector('#issue-dialog').close();toast('起票イメージ：「'+document.querySelector('#new-title').value+'」をIssueとしてボードに追加します。');});
+    document.addEventListener('submit',e=>{if(e.target.id==='chat-form'){e.preventDefault();const input=document.querySelector('#chat-input');state.messages.push(input.value);const line=document.createElement('div');line.className='chat-line';const author=document.createElement('strong');author.textContent='あなた';const p=document.createElement('p');p.textContent=input.value;line.append(author,p);document.querySelector('#extra-messages').append(line);input.value='';toast('入力を画面に追加しました。LLMの応答生成は行いません。');}});
+    function showLinkedDialog() { if(location.hash==='#switch'){document.querySelector('#switch-fields').innerHTML=providerFields('switch','Codex','別の利用可能モデル');document.querySelector('#model-dialog').showModal();} }
+    window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0);showLinkedDialog();});render();showLinkedDialog();
+  </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+{% macro model_select(models, name='selection', selected='') %}
+<select name="{{ name }}" aria-label="使用するモデル"><option value="">既定モデルを使用</option>{% for model in models %}<option value="{{ model.provider }}|{{ model.id }}" {{ 'selected' if selected == model.provider+'|'+model.id else '' }}>{{ 'Codex' if model.provider=='openai-codex' else model.provider }} / {{ model.id }}</option>{% endfor %}</select>
+{% endmacro %}
+{% macro csrf_input(csrf) %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}

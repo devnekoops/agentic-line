@@ -1,0 +1,3 @@
+<div class="notice {{ 'error' if job.state in ['failed','interrupted'] else '' }}" {% if job.state in ['queued','running'] %}hx-get="/ui/jobs/{{ job.id }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  {% if job.state=='queued' %}<span class="spinner"></span>処理を待っています。{% elif job.state=='running' %}<span class="spinner"></span>処理しています。{% elif job.state=='succeeded' %}処理が完了しました。{% else %}{{ job.error }}{% if job.kind!='run' %}<button hx-post="/ui/jobs/{{ job.id }}/retry" hx-target="closest .notice" hx-swap="outerHTML">結果を再確認</button>{% endif %}{% endif %}
+</div>
