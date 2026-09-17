@@ -1,0 +1,2 @@
+<pre class="diff">{% for line in diff.splitlines() %}<span class="{{ 'added' if line.startswith('+') else 'removed' if line.startswith('-') else 'hunk' if line.startswith('@@') else '' }}">{{ line }}
+</span>{% endfor %}</pre>

@@ -1,0 +1,38 @@
+[project]
+name = "kanban-local"
+version = "0.1.0"
+description = "A local GitHub kanban with Pi coding-agent, FastAPI and HTMX"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "jinja2>=3.1.6,<4",
+  "httpx>=0.28,<1",
+  "python-multipart>=0.0.20",
+  "markdown-it-py>=3,<5",
+  "bleach>=6.2,<7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "ruff>=0.11,<1", "playwright>=1.51,<2"]
+
+[project.scripts]
+kanban = "kanban.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kanban"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

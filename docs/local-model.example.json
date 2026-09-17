@@ -1,0 +1,23 @@
+{
+  "providers": {
+    "local-llama": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "local",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      },
+      "models": [
+        {
+          "id": "replace-with-your-server-model-id",
+          "name": "Local Llama",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 32768,
+          "maxTokens": 4096
+        }
+      ]
+    }
+  }
+}
