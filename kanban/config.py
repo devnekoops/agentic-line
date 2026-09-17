@@ -17,6 +17,7 @@ class Config:
     pi_agent_dir: Path = Path.home() / ".pi" / "agent"
     sandbox_image: str = "python:3.13-slim"
     testing: bool = False
+    gh_bin: str = "gh"
 
     @classmethod
     def from_env(cls) -> Config:
@@ -29,6 +30,7 @@ class Config:
             pi_bin=os.getenv("KANBAN_PI_BIN", "pi"),
             pi_agent_dir=Path(os.getenv("KANBAN_PI_AGENT_DIR", str(Path.home() / ".pi/agent"))).expanduser(),
             sandbox_image=os.getenv("KANBAN_SANDBOX_IMAGE", "python:3.13-slim"),
+            gh_bin=os.getenv("KANBAN_GH_BIN", "gh"),
         )
 
     def prepare(self) -> None:

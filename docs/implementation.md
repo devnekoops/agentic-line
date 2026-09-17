@@ -14,10 +14,11 @@
 - [x] Docker内のツール実行、ローカルWeb認証、CSRF・Origin検証、HTMLエスケープ
 - [x] マージと未マージcloseの区別、Draft解除、約60秒間隔のGitHub同期
 - [x] 自動テスト、実ブラウザ確認、Codex実推論、起動手順、wheel作成
+- [x] GitHub CLIの認証再利用、Webからのブラウザ認証開始・コード表示・完了確認・取消・再試行
 
 ## 検証の範囲
 
-最終実行: 通常テスト20件とブラウザテスト1件が成功。実Codexテスト1件は別途成功（通常実行では明示的にskip）。`ruff check`も成功。
+ブラウザ認証追加後の最終実行: 通常テスト36件とブラウザテスト1件が成功。実Codexテスト1件は初期版で別途成功（通常実行では明示的にskip）。`ruff check`も成功。
 
 | 対象 | 方法・結果 |
 | --- | --- |
@@ -59,12 +60,22 @@
 
 ## 構成と責務
 
+GitHub CLI認証を追加した。接続画面でCLIと手動トークンを切り替えられ、CLIでは選択時のGitHub.comアカウントを保持する。`github_auth.py`が認証情報の取得を共通化し、GitHub APIとGitのclone・fetch・pushの両方から使用する。CLIトークンのコピー保存、暗黙のPATフォールバックは行わない。ローカルのdiff・checkpoint等はCLIログアウト後も使用できる。
+
+追加テストではCLI subprocessの模擬実装を使い、アカウント固定、トークン更新、APIとGitへの共通適用、ログアウト、未導入、タイムアウト、失敗後の画面操作、PATへの切り替え、画面・DBへのトークン非露出を確認した。GitHub CLI 2.101.0でも未ログイン状態の取得を確認した。ログイン後の実GitHubへの書き込みは引き続き未検証。
+
+ブラウザ認証は`github_login.py`がWebプロセス内で1つのCLI subprocessを管理する。CLIの出力から決まった形式の認証コードとアカウント名だけを取り出し、APIやGitの処理は従来の認証モジュールを使う。CLIの出力形式が変わった場合は認証完了と見なさず、更新・再試行の案内を出す。GitHub CLI 2.101.0で実GitHubから認証コードを取得し、キャンセルしてプロセスが終了することを確認した。ユーザーのGitHub認証情報は変更していない。実アカウントでの許可と接続完了はユーザーの操作が必要であり、未検証。
+
+追加のsubprocessテストでは同時開始、二重クリック、ブラウザで認証したアカウントの固定、拒否・期限切れ・通信失敗・過大出力、未導入、コード取得と認証待ちのタイムアウト、取消・再試行、古い画面からの取消、手動認証切替、Web終了時のプロセス回収、認証・CSRF・Origin制限を確認。Chromiumでは画面再読み込み、コードのクリップボードへのコピー、GitHubの認証URLを別タブで開く動作、模擬的な許可後の自動接続、拒否後の再試行と取消を確認した。ブラウザテストのGitHub画面は通信を差し替えた模擬画面を使用する。
+
 | ファイル | 責務 |
 | --- | --- |
 | `kanban/web.py`、`templates/`、`static/` | ローカル認証、画面・API・SSE |
 | `kanban/workflow.py` | 工程、仕様版、モデル設定、Run、レビューの整合性 |
 | `kanban/worker.py`、`db.py` | ジョブ永続化、排他、復旧、定期同期 |
 | `kanban/github.py`、`workspaces.py` | GitHub操作と照合、Gitのworktree・commit・push・保存 |
+| `kanban/github_auth.py` | PAT / GitHub CLIの認証選択、アカウント固定、トークン取得と接続状態 |
+| `kanban/github_login.py` | ブラウザ認証の開始・状態・期限・取消・CLIプロセスの終了処理 |
 | `kanban/pi.py` | Pi RPCの開始・終了・イベント・セッション再開 |
 | `kanban/sandbox.py`、`agent/` | Docker実行環境とPi用の作業ツール |
 

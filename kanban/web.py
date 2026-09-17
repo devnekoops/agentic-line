@@ -18,6 +18,7 @@ from markupsafe import Markup
 from .config import Config
 from .db import Database, dump, now, uid
 from .github import Conflict, IntegrationError
+from .github_login import GitHubLogin
 from .workflow import PHASES, RUN_STATES, STAGES, TERMINAL, Workflow, spec_text
 
 ROOT = Path(__file__).parent
@@ -57,15 +58,20 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
     config.prepare()
     db = workflow.db if workflow else Database(config.database)
     workflow = workflow or Workflow(config, db)
+    github_login = GitHubLogin(workflow.github.auth)
     token = config.local_token()
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await workflow.github.close()
+        try:
+            yield
+        finally:
+            await github_login.close()
+            await workflow.github.close()
 
     app = FastAPI(title="Agentic Line", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.state.config, app.state.db, app.state.workflow = config, db, workflow
+    app.state.github_login = github_login
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
     templates = Jinja2Templates(directory=ROOT / "templates")
     templates.env.filters["markdown"] = render_markdown
@@ -239,7 +245,8 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
             "settings.html",
             active="settings",
             auth=config.pi_auth_status(),
-            github_connected=bool(config.secret("github")),
+            github_auth=await workflow.github.auth.status(),
+            github_login=github_login.status(),
             defaults=db.setting("defaults", {}),
             selected=workflow.repo(repository) if repository else None,
             config=config,
@@ -249,11 +256,56 @@ def create_app(config: Config | None = None, workflow: Workflow | None = None) -
     @app.post("/ui/settings/github")
     async def github_settings(request: Request):
         values = await data(request)
-        value = str(values.get("token", "")).strip()
-        if not value:
-            raise IntegrationError("GitHubトークンを入力してください。")
-        config.save_secret("github", value)
-        return notice(request, "GitHubの接続情報を保存しました。リポジトリを登録できます。")
+        method = values.get("method", "pat")
+        error = False
+        try:
+            if method == "cli":
+                username = await github_login.use_cli()
+                message = f"GitHub CLIの認証（{username}）を使う設定にしました。"
+            elif method == "pat":
+                await github_login.use_pat(str(values.get("token", "")))
+                message = "GitHubのトークン認証を設定しました。"
+            else:
+                raise IntegrationError("GitHubの認証方式が不正です。")
+        except IntegrationError as exc:
+            error, message = True, str(exc)
+        response = page(
+            request,
+            "github_auth.html",
+            github_auth=await workflow.github.auth.status(),
+            github_login=github_login.status(),
+            auth_message=message,
+            auth_error=error,
+        )
+        response.status_code = 400 if error else 200
+        return response
+
+    @app.get("/ui/settings/github", response_class=HTMLResponse)
+    async def github_auth_status(request: Request):
+        return page(
+            request,
+            "github_auth.html",
+            github_auth=await workflow.github.auth.status(),
+            github_login=github_login.status(),
+        )
+
+    @app.post("/ui/settings/github/login")
+    async def github_login_start(request: Request):
+        await github_login.start()
+        return page(request, "github_login.html", github_login=github_login.status())
+
+    @app.get("/ui/settings/github/login/{attempt_id}", response_class=HTMLResponse)
+    async def github_login_status(request: Request, attempt_id: str):
+        status = github_login.status()
+        response = page(request, "github_login.html", github_login=status)
+        if not status["active"] or status["id"] != attempt_id:
+            response.headers["HX-Trigger"] = "github-auth-changed"
+        return response
+
+    @app.post("/ui/settings/github/login/{attempt_id}/cancel")
+    async def github_login_cancel(request: Request, attempt_id: str):
+        await github_login.cancel(attempt_id)
+        return page(request, "github_login.html", github_login=github_login.status())
 
     @app.post("/ui/settings/models")
     async def refresh_models(request: Request):

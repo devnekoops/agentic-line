@@ -10,10 +10,8 @@ import httpx
 
 from .config import Config
 from .db import Database, dump, now
-
-
-class IntegrationError(Exception):
-    pass
+from .errors import IntegrationError
+from .github_auth import GitHubAuth
 
 
 class Conflict(IntegrationError):
@@ -39,6 +37,7 @@ def marker(operation_id: str) -> str:
 class GitHub:
     def __init__(self, config: Config, db: Database, client: httpx.AsyncClient | None = None):
         self.config, self.db = config, db
+        self.auth = GitHubAuth(config, db)
         self.client = client or httpx.AsyncClient(
             base_url=config.github_url, timeout=30, follow_redirects=False
         )
@@ -49,9 +48,9 @@ class GitHub:
             await self.client.aclose()
 
     async def request(self, method: str, path: str, **kwargs: Any) -> Any:
-        token = self.config.secret("github")
+        token = await self.auth.token()
         if not token and not self.config.testing:
-            raise IntegrationError("接続設定でGitHubのアクセストークンを登録してください。")
+            raise IntegrationError("接続設定でGitHub CLIまたはアクセストークンを設定してください。")
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
         if token:
             headers["Authorization"] = f"Bearer {token}"

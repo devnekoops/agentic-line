@@ -79,7 +79,7 @@ class Workflow:
     ):
         self.config, self.db = config, db
         self.github = github or GitHub(config, db)
-        self.workspaces = workspaces or Workspaces(config)
+        self.workspaces = workspaces or Workspaces(config, self.github.auth)
         self.pi_factory, self.sandbox_factory = pi_factory, sandbox_factory
 
     def task(self, task_id: str) -> dict:

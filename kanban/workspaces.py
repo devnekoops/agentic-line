@@ -6,12 +6,15 @@ import tarfile
 from pathlib import Path
 
 from .config import Config
+from .db import Database
 from .github import IntegrationError
+from .github_auth import GitHubAuth
 
 
 class Workspaces:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, auth: GitHubAuth | None = None):
         self.config = config
+        self.auth = auth or GitHubAuth(config, Database(config.database))
         self.askpass = config.data_dir / "runtime" / "git-askpass.py"
         self.askpass.write_text(
             "#!/usr/bin/env python3\nimport os,sys\nprint('x-access-token' if 'username' in sys.argv[1].lower() else os.environ.get('KANBAN_GIT_TOKEN',''))\n"
@@ -19,11 +22,13 @@ class Workspaces:
         self.askpass.chmod(0o700)
 
     async def git(self, *args: str, cwd: Path | None = None, check: bool = True) -> str:
+        # Local diffs, commits and recovery must work even after CLI logout.
+        token = await self.auth.token() if args and args[0] in {"clone", "fetch", "push"} else ""
         env = {
             **os.environ,
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_ASKPASS": str(self.askpass),
-            "KANBAN_GIT_TOKEN": self.config.secret("github"),
+            "KANBAN_GIT_TOKEN": token,
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_LFS_SKIP_SMUDGE": "1",
